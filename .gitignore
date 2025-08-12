@@ -1,0 +1,9 @@
+node_modules
+.dist
+.env
+.env.*
+.vscode
+.DS_Store
+coverage
+postgres_data/
+grafana_data/
