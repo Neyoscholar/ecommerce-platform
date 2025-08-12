@@ -1,6 +1,8 @@
-import 'express';
-declare module 'express-serve-static-core' {
-  interface Request {
-    user?: { id: number; email: string; role: 'customer' | 'admin' };
-  }
+import { Pool } from "pg";
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export default pool;
+
+export async function healthDb(): Promise<void> {
+  await pool.query("select 1");
 }
