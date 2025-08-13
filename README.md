@@ -353,34 +353,9 @@ kill -9 <PID>
 - **Safari** 14+
 - **Edge** 90+
 
-## 📄 **License**
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 👨‍💻 **Author**
 
 **Neyoscholar** - [GitHub Profile](https://github.com/Neyoscholar)
 
-## 🙏 **Acknowledgments**
 
-- **Express.js** team for the amazing web framework
-- **React** team for the UI library
-- **PostgreSQL** team for the database
-- **Redis** team for the caching solution
-- **Docker** team for containerization
-
-## 📞 **Support**
-
-- **Issues:** [GitHub Issues](https://github.com/Neyoscholar/ecommerce-platform/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/Neyoscholar/ecommerce-platform/discussions)
-- **Email:** [Your Email]
-
----
-
-## ⭐ **Star This Repository**
-
-If this project helped you, please give it a ⭐ star on GitHub!
-
----
-
-**Built with ❤️ by Neyoscholar**
