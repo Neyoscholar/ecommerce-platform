@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts-jdk17
+    container_name: jenkins
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    environment:
+      - JENKINS_OPTS=--httpPort=8080
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker
+      - /usr/bin/docker-compose:/usr/bin/docker-compose
+    networks:
+      - jenkins_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Local Docker Registry for testing
+  registry:
+    image: registry:2
+    container_name: jenkins-registry
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - REGISTRY_STORAGE_DELETE_ENABLED=true
+    volumes:
+      - registry_data:/var/lib/registry
+    networks:
+      - jenkins_network
+
+  # PostgreSQL for Jenkins (optional, for advanced features)
+  jenkins-db:
+    image: postgres:15-alpine
+    container_name: jenkins-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jenkins
+      POSTGRES_USER: jenkins
+      POSTGRES_PASSWORD: jenkins_password
+    volumes:
+      - jenkins_db_data:/var/lib/postgresql/data
+    networks:
+      - jenkins_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jenkins"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis for Jenkins (optional, for caching)
+  jenkins-redis:
+    image: redis:7-alpine
+    container_name: jenkins-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - jenkins_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Nginx reverse proxy (optional, for SSL termination)
+  nginx:
+    image: nginx:alpine
+    container_name: jenkins-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/jenkins.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - jenkins
+    networks:
+      - jenkins_network
+
+volumes:
+  jenkins_home:
+    driver: local
+  registry_data:
+    driver: local
+  jenkins_db_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  jenkins_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

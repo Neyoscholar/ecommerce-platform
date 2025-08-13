@@ -1,0 +1,197 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'ecommerce-platform'
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 10s
+
+  # Backend API
+  - job_name: 'backend-api'
+    static_configs:
+      - targets: ['backend:4000']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    honor_labels: true
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '(.+)'
+        replacement: 'backend-api'
+
+  # Frontend (if it exposes metrics)
+  - job_name: 'frontend'
+    static_configs:
+      - targets: ['frontend:80']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Node Exporter (System Metrics)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    honor_labels: true
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '(.+)'
+        replacement: 'host-system'
+
+  # Redis Exporter
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    honor_labels: true
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '(.+)'
+        replacement: 'redis-cache'
+
+  # PostgreSQL Exporter
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    honor_labels: true
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '(.+)'
+        replacement: 'postgres-db'
+
+  # cAdvisor (Container Metrics)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    honor_labels: true
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '(.+)'
+        replacement: 'containers'
+
+  # Blackbox Exporter (HTTP Health Checks)
+  - job_name: 'http-health-checks'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://frontend:80
+        - http://backend:4000/healthz
+        - http://backend:4000/cache/healthz
+        - http://prometheus:9090
+        - http://grafana:3000
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+# Recording Rules for Common Queries
+rule_files:
+  - "rules/*.yml"
+
+# Alerting Rules
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Additional Scrape Configs for Custom Metrics
+  # Custom Business Metrics
+  - job_name: 'business-metrics'
+    static_configs:
+      - targets: ['backend:4000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 15s
+    honor_labels: true
+    metric_relabel_configs:
+      # Keep only business-related metrics
+      - source_labels: [__name__]
+        regex: '(orders_created_total|products_viewed_total|user_registrations_total|total_revenue_dollars)'
+        action: keep
+
+  # Performance Metrics
+  - job_name: 'performance-metrics'
+    static_configs:
+      - targets: ['backend:4000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    honor_labels: true
+    metric_relabel_configs:
+      # Keep only performance-related metrics
+      - source_labels: [__name__]
+        regex: '(http_request_duration_seconds|db_query_duration_seconds|cache_operation_duration_seconds)'
+        action: keep
+
+  # Error Metrics
+  - job_name: 'error-metrics'
+    static_configs:
+      - targets: ['backend:4000']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    honor_labels: true
+    metric_relabel_configs:
+      # Keep only error-related metrics
+      - source_labels: [__name__]
+        regex: '(errors_total|error_rate_per_second)'
+        action: keep
+
+# Storage Configuration
+storage:
+  tsdb:
+    path: /prometheus
+    retention.time: 200h
+    retention.size: 10GB
+    min-block-duration: 2h
+    max-block-duration: 24h
+
+# Query Logging
+query_log_file: /var/log/prometheus/query.log
+
+# Remote Write (for long-term storage)
+remote_write:
+  - url: "http://remote-storage:9201/write"
+    remote_timeout: 30s
+    write_relabel_configs:
+      - source_labels: [__name__]
+        regex: '.*'
+        action: keep
+
+# Remote Read (for long-term storage queries)
+remote_read:
+  - url: "http://remote-storage:9201/read"
+    read_timeout: 30s

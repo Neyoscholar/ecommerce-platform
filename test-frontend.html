@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend-Backend Integration Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Frontend-Backend Integration Test</h1>
+    
+    <div class="test-section">
+        <h3>1. Backend Health Check</h3>
+        <button onclick="testBackendHealth()">Test Backend Health</button>
+        <div id="backend-health-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. Products API Test</h3>
+        <button onclick="testProductsAPI()">Test Products API</button>
+        <div id="products-api-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. Frontend Access Test</h3>
+        <button onclick="testFrontendAccess()">Test Frontend Access</button>
+        <div id="frontend-access-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. Complete Flow Test</h3>
+        <button onclick="testCompleteFlow()">Test Complete Flow</button>
+        <div id="complete-flow-result"></div>
+    </div>
+
+    <script>
+        async function testBackendHealth() {
+            const resultDiv = document.getElementById('backend-health-result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                const response = await fetch('http://localhost:4000/healthz');
+                const data = await response.json();
+                
+                if (data.ok) {
+                    resultDiv.innerHTML = '<div class="success">✅ Backend is healthy and responding</div>';
+                } else {
+                    resultDiv.innerHTML = '<div class="error">❌ Backend health check failed</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Backend connection failed: ${error.message}</div>`;
+            }
+        }
+        
+        async function testProductsAPI() {
+            const resultDiv = document.getElementById('products-api-result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                const response = await fetch('http://localhost:4000/api/products?page=1&limit=3');
+                const data = await response.json();
+                
+                if (data.items && data.items.length > 0) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ Products API working! Found ${data.items.length} products
+                            <pre>${JSON.stringify(data.items[0], null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = '<div class="error">❌ Products API returned no items</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Products API failed: ${error.message}</div>`;
+            }
+        }
+        
+        async function testFrontendAccess() {
+            const resultDiv = document.getElementById('frontend-access-result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                const response = await fetch('http://localhost:5173');
+                const html = await response.text();
+                
+                if (html.includes('E-Commerce Platform')) {
+                    resultDiv.innerHTML = '<div class="success">✅ Frontend is accessible and loading</div>';
+                } else {
+                    resultDiv.innerHTML = '<div class="error">❌ Frontend not loading correctly</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Frontend access failed: ${error.message}</div>`;
+            }
+        }
+        
+        async function testCompleteFlow() {
+            const resultDiv = document.getElementById('complete-flow-result');
+            resultDiv.innerHTML = 'Testing complete flow...';
+            
+            try {
+                // Test backend health
+                const healthResponse = await fetch('http://localhost:4000/healthz');
+                const healthData = await healthResponse.json();
+                
+                if (!healthData.ok) {
+                    throw new Error('Backend health check failed');
+                }
+                
+                // Test products API
+                const productsResponse = await fetch('http://localhost:4000/api/products?page=1&limit=3');
+                const productsData = await productsResponse.json();
+                
+                if (!productsData.items || productsData.items.length === 0) {
+                    throw new Error('Products API returned no items');
+                }
+                
+                // Test frontend access
+                const frontendResponse = await fetch('http://localhost:5173');
+                const frontendHtml = await frontendResponse.text();
+                
+                if (!frontendHtml.includes('E-Commerce Platform')) {
+                    throw new Error('Frontend not loading correctly');
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        ✅ Complete flow test passed!<br>
+                        - Backend: Healthy<br>
+                        - Products API: Working (${productsData.items.length} products)<br>
+                        - Frontend: Accessible<br>
+                        <br>
+                        🎉 Your e-commerce platform is working correctly!
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Complete flow test failed: ${error.message}</div>`;
+            }
+        }
+        
+        // Auto-run tests on page load
+        window.onload = function() {
+            setTimeout(() => {
+                testBackendHealth();
+                setTimeout(() => testProductsAPI(), 1000);
+                setTimeout(() => testFrontendAccess(), 2000);
+                setTimeout(() => testCompleteFlow(), 3000);
+            }, 1000);
+        };
+    </script>
+</body>
+</html>

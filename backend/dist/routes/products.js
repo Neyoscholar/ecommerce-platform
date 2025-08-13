@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // backend/src/routes/products.ts
 const express_1 = require("express");
 const db_1 = __importDefault(require("../db")); // <-- default export from db.ts
+const cache_1 = __importDefault(require("../services/cache"));
 const router = (0, express_1.Router)();
 /**
  * GET /api/products
@@ -22,6 +23,15 @@ router.get("/", async (req, res) => {
         const offset = (page - 1) * limit;
         const category = req.query.category !== undefined ? Number(req.query.category) : undefined;
         const search = req.query.search !== undefined ? String(req.query.search) : undefined;
+        // Build cache key based on query parameters
+        const cacheKey = `products:${page}:${limit}:${category || 'all'}:${search || 'none'}`;
+        // Try to get from cache first
+        const cachedResult = await cache_1.default.get(cacheKey);
+        if (cachedResult) {
+            console.log('🚀 Serving products from cache');
+            return res.json(cachedResult);
+        }
+        console.log('🔄 Fetching products from database...');
         const clauses = [];
         const params = [];
         if (Number.isFinite(category)) {
@@ -45,7 +55,11 @@ router.get("/", async (req, res) => {
         const countRes = await db_1.default.query(countSql, params);
         const total = Number(countRes.rows[0]?.count ?? 0);
         const dataRes = await db_1.default.query(dataSql, [...params, limit, offset]);
-        return res.json({ items: dataRes.rows, page, limit, total });
+        const response = { items: dataRes.rows, page, limit, total };
+        // Cache the response for 60 seconds
+        await cache_1.default.set(cacheKey, response, 60);
+        console.log('💾 Products cached for 60 seconds');
+        return res.json(response);
     }
     catch (err) {
         console.error("GET /api/products failed:", err);
